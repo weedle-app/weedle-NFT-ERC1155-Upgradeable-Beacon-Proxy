@@ -18,20 +18,22 @@ contract WeedleTokenFactory is Pausable, Ownable {
 
     event OnTokenDeployed(address tokenAddress, uint256 createdTokenCount);
 
-    // event OnFactoryPaused(address tokenAddress, uint256 createdTokenCount);
-
     constructor(address _beacon) {
         weedleTokenBeacon = address(_beacon);
     }
 
-    function buildToken(string calldata _uri, uint256 )
+    function createToken(string calldata _uri)
         external
         whenNotPaused
         returns (address)
     {
         BeaconProxy proxy = new BeaconProxy(
             weedleTokenBeacon,
-            abi.encodeWithSelector(WeedleNFTTokenV1.initialize.selector, _uri)
+            abi.encodeWithSelector(
+                WeedleNFTTokenV1.initialize.selector,
+                _uri,
+                owner()
+            )
         );
 
         createdTokenCount++;
