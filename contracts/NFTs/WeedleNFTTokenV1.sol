@@ -16,6 +16,7 @@ contract WeedleNFTTokenV1 is
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
+    uint256 public maxSupply;
     // Mapping from token ID to owner address
     mapping(uint256 => address) private _owners;
 
@@ -23,15 +24,17 @@ contract WeedleNFTTokenV1 is
 
     CountersUpgradeable.Counter private lastMintedId;
 
-    function initialize(string calldata _uri, address _admin)
-        public
-        initializer
-    {
+    function initialize(
+        string calldata _uri,
+        address _admin,
+        uint256 _maxSupply
+    ) public initializer {
         __ERC1155_init(_uri);
         __Ownable_init();
         __AccessControl_init();
 
         transferOwnership(_admin);
+        maxSupply = _maxSupply;
     }
 
     /**
@@ -56,10 +59,21 @@ contract WeedleNFTTokenV1 is
     }
 
     /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier isMintingOngoing() {
+        require(
+            lastMintedId.current() + 1 <= maxSupply,
+            "Minting Error: Minting has ended!"
+        );
+        _;
+    }
+
+    /**
      * The function is designed to be used for all minting purposes
      *
      */
-    function _mintTo(address to) private returns (uint256) {
+    function _mintTo(address to) private isMintingOngoing returns (uint256) {
         lastMintedId.increment();
 
         uint256 tokenId = lastMintedId.current();
