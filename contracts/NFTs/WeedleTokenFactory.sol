@@ -22,7 +22,7 @@ contract WeedleTokenFactory is Pausable, Ownable {
         weedleTokenBeacon = address(_beacon);
     }
 
-    function createToken(string calldata _uri)
+    function createToken(string calldata _uri, uint256 _maxSupply)
         external
         whenNotPaused
         returns (address)
@@ -32,7 +32,8 @@ contract WeedleTokenFactory is Pausable, Ownable {
             abi.encodeWithSelector(
                 WeedleNFTTokenV1.initialize.selector,
                 _uri,
-                owner()
+                owner(),
+                _maxSupply
             )
         );
 

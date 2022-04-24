@@ -20,7 +20,7 @@ describe("WeedleNFTTokenV1", async () => {
   // eslint-disable-next-line camelcase
   let WeedleNFTTokenV1: WeedleNFTTokenV1__factory;
   const nftBaseUri = "https://joinweedle.com/{id}.json";
-
+  const maxSupply = 10000;
   // The before all is used as a test for deployment here
   beforeEach(async () => {
     const [owner, ...rest] = await ethers.getSigners();
@@ -42,7 +42,7 @@ describe("WeedleNFTTokenV1", async () => {
     weedleTokenFactory = await WeedleTokenFactory.deploy(beacon.address);
     await weedleTokenFactory.deployed();
 
-    await (await weedleTokenFactory.createToken(nftBaseUri)).wait();
+    await (await weedleTokenFactory.createToken(nftBaseUri, maxSupply)).wait();
     const tokenV1Addr = await weedleTokenFactory.getTokenByIndex(1);
     weedleNFTToken = await WeedleNFTTokenV1.attach(tokenV1Addr);
 
@@ -76,6 +76,18 @@ describe("WeedleNFTTokenV1", async () => {
       await (await instance.mint()).wait();
 
       expect(await instance.ownerOf(1)).to.equal(contractOwner.address);
+    });
+
+    it("should not allow minting above maxSupply", async () => {
+      const newBaseUri = "https://new-token.com/{id}.json";
+      const tokenId = 2;
+
+      await (await weedleTokenFactory.createToken(newBaseUri, 1)).wait();
+      const newTokenV1Addr = await weedleTokenFactory.getTokenByIndex(tokenId);
+      const newWeedleNFTToken = await WeedleNFTTokenV1.attach(newTokenV1Addr);
+      await (await newWeedleNFTToken.mint()).wait();
+
+      await expect(newWeedleNFTToken.mint()).to.be.reverted;
     });
 
     it("should not allow non-owner to mint", async () => {
