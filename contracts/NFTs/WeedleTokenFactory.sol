@@ -51,11 +51,11 @@ contract WeedleTokenFactory is Pausable, Ownable {
         return tokensList[index];
     }
 
-    function pauseFactory() external onlyOwner {
+    function pauseFactory() external whenNotPaused onlyOwner {
         _pause();
     }
 
-    function unpauseFactory() external onlyOwner {
+    function unpauseFactory() external whenPaused onlyOwner {
         _unpause();
     }
 }

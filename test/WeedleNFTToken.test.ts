@@ -8,6 +8,7 @@ import {
   WeedleTokenFactory,
   // eslint-disable-next-line camelcase
   WeedleNFTTokenV1__factory,
+  // eslint-disable-next-line node/no-missing-import
 } from "../typechain";
 
 describe("WeedleNFTTokenV1", async () => {
@@ -33,7 +34,6 @@ describe("WeedleNFTTokenV1", async () => {
     const beacon = await upgrades.deployBeacon(WeedleNFTTokenV1);
     await beacon.deployed();
 
-    console.log("Beacon deployed to:", beacon.address);
     const WeedleTokenFactory = await ethers.getContractFactory(
       "WeedleTokenFactory",
       contractOwner
@@ -41,8 +41,6 @@ describe("WeedleNFTTokenV1", async () => {
 
     weedleTokenFactory = await WeedleTokenFactory.deploy(beacon.address);
     await weedleTokenFactory.deployed();
-
-    console.log("factory deployed to:", weedleTokenFactory.address);
 
     await (await weedleTokenFactory.createToken(nftBaseUri)).wait();
     const tokenV1Addr = await weedleTokenFactory.getTokenByIndex(1);
@@ -53,26 +51,6 @@ describe("WeedleNFTTokenV1", async () => {
 
   afterEach(async () => {
     await ethers.provider.send("evm_revert", [snapshotId]);
-  });
-
-  describe("Deployments", () => {
-    it("should deploy correctly and assign the correct uri", async () => {
-      const tokenId = 1;
-      const rawUri = await weedleNFTToken.uri(tokenId);
-
-      expect(rawUri).to.equal(nftBaseUri);
-    });
-    it("should create a new token from factory different from the initial one", async () => {
-      const newBaseUri = "https://new-token.com/{id}.json";
-      const tokenId = 2;
-
-      await (await weedleTokenFactory.createToken(newBaseUri)).wait();
-      const newTokenV1Addr = await weedleTokenFactory.getTokenByIndex(tokenId);
-      const newWeedleNFTToken = await WeedleNFTTokenV1.attach(newTokenV1Addr);
-      const rawUri = await newWeedleNFTToken.uri(tokenId);
-
-      expect(rawUri).to.equal(newBaseUri);
-    });
   });
 
   describe("Uri", () => {
