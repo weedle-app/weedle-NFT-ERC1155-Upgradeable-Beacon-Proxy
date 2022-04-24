@@ -12,6 +12,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      LOCAL_API_URL: ${{ secrets.LOCAL_API_URL }}
 
     strategy:
       matrix:
