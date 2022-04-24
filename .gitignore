@@ -7,5 +7,4 @@ typechain
 #Hardhat files
 cache
 artifacts
-practice
-/test/Practice.test.ts
+.openzeppelin/unknown-*.json
