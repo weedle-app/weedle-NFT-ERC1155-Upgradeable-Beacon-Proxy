@@ -23,10 +23,15 @@ contract WeedleNFTTokenV1 is
 
     CountersUpgradeable.Counter private lastMintedId;
 
-    function initialize(string calldata _uri) public initializer {
+    function initialize(string calldata _uri, address _admin)
+        public
+        initializer
+    {
         __ERC1155_init(_uri);
         __Ownable_init();
         __AccessControl_init();
+
+        transferOwnership(_admin);
     }
 
     /**
@@ -76,10 +81,7 @@ contract WeedleNFTTokenV1 is
     function ownerOf(uint256 tokenId) public view override returns (address) {
         address owner = _owners[tokenId];
 
-        require(
-            owner != address(0),
-            "Query for nonexistent token!"
-        );
+        require(owner != address(0), "Query for nonexistent token!");
         return owner;
     }
 
