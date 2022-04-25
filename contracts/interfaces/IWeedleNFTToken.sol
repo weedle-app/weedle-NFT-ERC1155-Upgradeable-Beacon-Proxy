@@ -4,8 +4,6 @@ pragma solidity ^0.8.6;
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 
 interface IWeedleNFTToken is IERC1155Upgradeable {
-    event MintingComplete(uint256 indexed tokenId);
-    event BulkMintComplete(uint256[] indexed tokenId);
     event NFTMinted(
         uint256 indexed tokenId,
         address indexed mintedFor,
@@ -21,4 +19,10 @@ interface IWeedleNFTToken is IERC1155Upgradeable {
     ) external returns (uint256);
 
     function ownerOf(uint256 tokenId) external view returns (address);
+
+    function reedemAndMint(
+        address account,
+        address signer,
+        bytes calldata signature
+    ) external payable;
 }

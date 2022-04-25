@@ -11,6 +11,37 @@ import {
   // eslint-disable-next-line node/no-missing-import
 } from "../typechain";
 
+interface DomainInfo {
+  name: string;
+  version: string;
+  verifyingContract: string;
+}
+
+interface NFT {
+  name: string;
+  type: string;
+}
+
+const getMintingSignature = async (
+  address: SignerWithAddress,
+  domainInfo: DomainInfo,
+  nftArgs: NFT[],
+  args: Record<string, unknown>
+) => {
+  const { chainId } = await ethers.provider.getNetwork();
+
+  return address._signTypedData(
+    {
+      chainId,
+      ...domainInfo,
+    },
+    {
+      NFT: nftArgs,
+    },
+    args
+  );
+};
+
 describe("WeedleNFTTokenV1", async () => {
   let weedleNFTToken: WeedleNFTTokenV1;
   let weedleTokenFactory: WeedleTokenFactory;
@@ -42,7 +73,14 @@ describe("WeedleNFTTokenV1", async () => {
     weedleTokenFactory = await WeedleTokenFactory.deploy(beacon.address);
     await weedleTokenFactory.deployed();
 
-    await (await weedleTokenFactory.createToken(nftBaseUri, maxSupply)).wait();
+    await (
+      await weedleTokenFactory.createToken({
+        uri: nftBaseUri,
+        maxSupply,
+        name: "WDL",
+        price: ethers.utils.parseEther("1"),
+      })
+    ).wait();
     const tokenV1Addr = await weedleTokenFactory.getTokenByIndex(1);
     weedleNFTToken = await WeedleNFTTokenV1.attach(tokenV1Addr);
 
@@ -82,7 +120,15 @@ describe("WeedleNFTTokenV1", async () => {
       const newBaseUri = "https://new-token.com/{id}.json";
       const tokenId = 2;
 
-      await (await weedleTokenFactory.createToken(newBaseUri, 1)).wait();
+      // newBaseUri, 1
+      await (
+        await weedleTokenFactory.createToken({
+          uri: newBaseUri,
+          maxSupply: 1,
+          name: "WDL",
+          price: ethers.utils.parseEther("1"),
+        })
+      ).wait();
       const newTokenV1Addr = await weedleTokenFactory.getTokenByIndex(tokenId);
       const newWeedleNFTToken = await WeedleNFTTokenV1.attach(newTokenV1Addr);
       await (await newWeedleNFTToken.mint()).wait();
@@ -116,6 +162,31 @@ describe("WeedleNFTTokenV1", async () => {
       expect(nftMintedEvent.args?.tokenId).to.equal(1);
       expect(nftMintedEvent.args?.mintedFor).to.equal(contractOwner.address);
       expect(nftMintedEvent.args?.amount).to.equal(1);
+    });
+
+    it("should verify signature and allow user mint", async () => {
+      /* 
+
+      await (await instance.mint()).wait();
+
+      expect(await instance.ownerOf(1)).to.equal(contractOwner.address); */
+      const _user = otherUsers[0];
+      const instance = weedleNFTToken.connect(contractOwner);
+
+      const signature = await getMintingSignature(
+        _user,
+        {
+          name: "WDL",
+          verifyingContract: weedleNFTToken.address,
+          version: "1.0.0",
+        },
+        [{ name: "account", type: "address" }],
+        { account: _user.address }
+      );
+
+      await expect(
+        instance.reedemAndMint(_user.address, _user.address, signature)
+      ).to.emit(weedleNFTToken, "NFTMinted");
     });
   });
 });

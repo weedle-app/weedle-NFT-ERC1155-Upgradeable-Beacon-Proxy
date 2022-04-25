@@ -5,14 +5,15 @@ pragma solidity ^0.8.6;
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./WeedleNFTTokenV1.sol";
+import "./helpers/SharedStructs.sol";
 
 contract WeedleTokenFactory is Pausable, Ownable {
     uint256 public createdTokenCount;
     address private immutable weedleTokenBeacon;
+
     // mapping of id to token created
     mapping(uint256 => address) private tokensList;
 
@@ -22,18 +23,18 @@ contract WeedleTokenFactory is Pausable, Ownable {
         weedleTokenBeacon = address(_beacon);
     }
 
-    function createToken(string calldata _uri, uint256 _maxSupply)
+    function createToken(SharedStructs.Settings memory _settings)
         external
         whenNotPaused
         returns (address)
     {
+
         BeaconProxy proxy = new BeaconProxy(
             weedleTokenBeacon,
             abi.encodeWithSelector(
                 WeedleNFTTokenV1.initialize.selector,
-                _uri,
-                owner(),
-                _maxSupply
+                _settings,
+                owner()
             )
         );
 

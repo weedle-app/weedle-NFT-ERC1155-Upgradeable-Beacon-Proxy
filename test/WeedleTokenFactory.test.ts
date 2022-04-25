@@ -43,7 +43,14 @@ describe("WeedleTokenFactory", async () => {
     weedleTokenFactory = await WeedleTokenFactory.deploy(beacon.address);
     await weedleTokenFactory.deployed();
 
-    await (await weedleTokenFactory.createToken(nftBaseUri, maxSupply)).wait();
+    await (
+      await weedleTokenFactory.createToken({
+        uri: nftBaseUri,
+        maxSupply,
+        name: "WDL",
+        price: ethers.utils.parseEther("1"),
+      })
+    ).wait();
     const tokenV1Addr = await weedleTokenFactory.getTokenByIndex(1);
     weedleNFTToken = await WeedleNFTTokenV1.attach(tokenV1Addr);
 
@@ -65,7 +72,12 @@ describe("WeedleTokenFactory", async () => {
       const tokenId = 2;
 
       await (
-        await weedleTokenFactory.createToken(newBaseUri, maxSupply)
+        await weedleTokenFactory.createToken({
+          uri: newBaseUri,
+          maxSupply,
+          name: "WDL",
+          price: ethers.utils.parseEther("1"),
+        })
       ).wait();
       const newTokenV1Addr = await weedleTokenFactory.getTokenByIndex(tokenId);
       const newWeedleNFTToken = await WeedleNFTTokenV1.attach(newTokenV1Addr);
@@ -80,8 +92,14 @@ describe("WeedleTokenFactory", async () => {
       await (await weedleTokenFactory.pauseFactory()).wait();
       const newBaseUri = "https://new-token.com/{id}.json";
 
-      await expect(weedleTokenFactory.createToken(newBaseUri, maxSupply)).to.be
-        .reverted;
+      await expect(
+        weedleTokenFactory.createToken({
+          uri: newBaseUri,
+          maxSupply,
+          name: "WDL",
+          price: ethers.utils.parseEther("1"),
+        })
+      ).to.be.reverted;
     });
 
     it("should not allow getting existing NFT token information when factory is paused", async () => {
