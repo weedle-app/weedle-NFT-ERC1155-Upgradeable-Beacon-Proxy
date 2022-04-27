@@ -169,7 +169,9 @@ describe("WeedleNFTTokenV1", async () => {
 
       await expect(
         weedleNFTToken.connect(_user).reedemAndMint(hash, signature, options)
-      ).to.emit(weedleNFTToken, "NFTMinted");
+      )
+        .to.emit(weedleNFTToken, "NFTMinted")
+        .withArgs(1, _user.address, 1);
     });
   });
 });

@@ -99,12 +99,6 @@ contract WeedleNFTTokenV1 is
         payable
         override
     {
-        console.log(
-            ECDSAUpgradeable.recover(
-                ECDSAUpgradeable.toEthSignedMessageHash(hash),
-                signature
-            )
-        );
         require(
             hash == keccak256(abi.encode(msg.sender, owner(), address(this))),
             "Invalid hash"
