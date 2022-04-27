@@ -27,6 +27,9 @@ const config: HardhatUserConfig = {
   solidity: "0.8.6",
   defaultNetwork: "hardhat",
   networks: {
+    /* hardhat: {
+      chainId: 31337,
+    }, */
     ropsten: {
       url: API_URL || process.env.ROPSTEN_URL || "",
       accounts: PRIVATE_KEY !== undefined ? [`0x${PRIVATE_KEY}`] : [],

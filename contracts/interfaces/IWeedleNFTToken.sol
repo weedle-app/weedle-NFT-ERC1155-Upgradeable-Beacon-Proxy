@@ -20,9 +20,7 @@ interface IWeedleNFTToken is IERC1155Upgradeable {
 
     function ownerOf(uint256 tokenId) external view returns (address);
 
-    function reedemAndMint(
-        address account,
-        address signer,
-        bytes calldata signature
-    ) external payable;
+    function reedemAndMint(bytes32 hash, bytes calldata signature)
+        external
+        payable;
 }

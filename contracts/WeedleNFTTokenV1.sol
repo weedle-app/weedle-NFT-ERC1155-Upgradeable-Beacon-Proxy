@@ -5,8 +5,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+// import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "hardhat/console.sol";
 
 import "./interfaces/IWeedleNFTToken.sol";
 import "./helpers/SharedStructs.sol";
@@ -44,6 +46,8 @@ contract WeedleNFTTokenV1 is
         transferOwnership(_admin);
         maxSupply = _settings.maxSupply;
         settings = _settings;
+
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -78,17 +82,38 @@ contract WeedleNFTTokenV1 is
         return _mintTo(msg.sender);
     }
 
-    function reedemAndMint(
-        address account,
-        address signer,
-        bytes calldata signature
-    ) external payable override {
-        require(
-            _verifySignature(
-                signer,
-                _hash(account, owner(), settings.uri),
+    /**
+     * @dev See {ownerOf}.
+     *
+     * tokenId - Id of token to get owner of
+     */
+    function ownerOf(uint256 tokenId) public view override returns (address) {
+        address owner = _owners[tokenId];
+
+        require(owner != address(0), "Query for nonexistent token!");
+        return owner;
+    }
+
+    function reedemAndMint(bytes32 hash, bytes calldata signature)
+        external
+        payable
+        override
+    {
+        console.log(
+            ECDSAUpgradeable.recover(
+                ECDSAUpgradeable.toEthSignedMessageHash(hash),
                 signature
-            ),
+            )
+        );
+        require(
+            hash == keccak256(abi.encode(msg.sender, owner(), address(this))),
+            "Invalid hash"
+        );
+        require(
+            ECDSAUpgradeable.recover(
+                ECDSAUpgradeable.toEthSignedMessageHash(hash),
+                signature
+            ) == owner(),
             "Invalid signature"
         );
 
@@ -96,7 +121,7 @@ contract WeedleNFTTokenV1 is
             msg.value == settings.price,
             "Insufficient amount sent for NFT"
         );
-        _mintTo(account);
+        _mintTo(msg.sender);
     }
 
     /**
@@ -115,51 +140,6 @@ contract WeedleNFTTokenV1 is
         emit NFTMinted(tokenId, to, 1);
 
         return tokenId;
-    }
-
-    /**
-     * @dev See {ownerOf}.
-     *
-     * tokenId - Id of token to get owner of
-     */
-    function ownerOf(uint256 tokenId) public view override returns (address) {
-        address owner = _owners[tokenId];
-
-        require(owner != address(0), "Query for nonexistent token!");
-        return owner;
-    }
-
-    function _verifySignature(
-        address signer,
-        bytes32 digest,
-        bytes memory signature
-    ) internal view returns (bool) {
-        return
-            SignatureCheckerUpgradeable.isValidSignatureNow(
-                signer,
-                digest,
-                signature
-            );
-    }
-
-    function _hash(
-        address account,
-        address owner,
-        string storage tokenUri
-    ) internal view returns (bytes32) {
-        return
-            _hashTypedDataV4(
-                keccak256(
-                    abi.encode(
-                        keccak256(
-                            "NFT(address account, address owner, string tokenUri)"
-                        ),
-                        account,
-                        owner,
-                        tokenUri
-                    )
-                )
-            );
     }
 
     function safeTransferToOtherChains(

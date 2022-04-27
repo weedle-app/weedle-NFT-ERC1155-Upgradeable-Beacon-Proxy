@@ -11,35 +11,19 @@ import {
   // eslint-disable-next-line node/no-missing-import
 } from "../typechain";
 
-interface DomainInfo {
-  name: string;
-  version: string;
-  verifyingContract: string;
-}
-
-interface NFT {
-  name: string;
-  type: string;
-}
-
 const getMintingSignature = async (
-  address: SignerWithAddress,
-  domainInfo: DomainInfo,
-  nftArgs: NFT[],
-  args: Record<string, unknown>
-) => {
-  const { chainId } = await ethers.provider.getNetwork();
+  contractOwner: SignerWithAddress,
+  typesToSign: string[],
+  dataToSign: string[]
+): Promise<{ hash: string; signature: string }> => {
+  const message = ethers.utils.defaultAbiCoder.encode(typesToSign, dataToSign);
 
-  return address._signTypedData(
-    {
-      chainId,
-      ...domainInfo,
-    },
-    {
-      NFT: nftArgs,
-    },
-    args
+  const hash = ethers.utils.keccak256(message);
+  const signature = await contractOwner.signMessage(
+    ethers.utils.arrayify(hash)
   );
+
+  return { hash, signature };
 };
 
 describe("WeedleNFTTokenV1", async () => {
@@ -165,27 +149,26 @@ describe("WeedleNFTTokenV1", async () => {
     });
 
     it("should verify signature and allow user mint", async () => {
-      /* 
-
-      await (await instance.mint()).wait();
-
-      expect(await instance.ownerOf(1)).to.equal(contractOwner.address); */
+      const minter = otherUsers[1];
       const _user = otherUsers[0];
-      const instance = weedleNFTToken.connect(contractOwner);
 
-      const signature = await getMintingSignature(
-        _user,
-        {
-          name: "WDL",
-          verifyingContract: weedleNFTToken.address,
-          version: "1.0.0",
-        },
-        [{ name: "account", type: "address" }],
-        { account: _user.address }
+      await (
+        await weedleNFTToken.grantRole(
+          await weedleNFTToken.MINTER_ROLE(),
+          minter.address
+        )
+      ).wait();
+
+      const { hash, signature } = await getMintingSignature(
+        contractOwner,
+        ["address", "address", "address"],
+        [_user.address, contractOwner.address, weedleNFTToken.address]
       );
 
+      const options = { value: ethers.utils.parseEther("1.0") };
+
       await expect(
-        instance.reedemAndMint(_user.address, _user.address, signature)
+        weedleNFTToken.connect(_user).reedemAndMint(hash, signature, options)
       ).to.emit(weedleNFTToken, "NFTMinted");
     });
   });
