@@ -10,6 +10,8 @@ interface IWeedleNFTToken is IERC1155Upgradeable {
         uint256 amount
     );
 
+    event FundsTransfer(address indexed payee, uint256 indexed amount);
+
     function mint() external returns (uint256);
 
     function safeTransferToOtherChains(

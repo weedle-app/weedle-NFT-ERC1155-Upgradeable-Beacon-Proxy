@@ -6,9 +6,8 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
-// import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
-import "hardhat/console.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "./interfaces/IWeedleNFTToken.sol";
 import "./helpers/SharedStructs.sol";
@@ -18,15 +17,14 @@ contract WeedleNFTTokenV1 is
     ERC1155Upgradeable,
     OwnableUpgradeable,
     AccessControlUpgradeable,
-    EIP712Upgradeable
+    EIP712Upgradeable,
+    ReentrancyGuardUpgradeable
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    uint256 public maxSupply;
-    uint256 public price;
-
     // Mapping from token ID to owner address
     mapping(uint256 => address) private _owners;
+    mapping(address => uint256) private _totalMintedPerUser;
 
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -42,9 +40,9 @@ contract WeedleNFTTokenV1 is
         __Ownable_init();
         __AccessControl_init();
         __EIP712_init(_settings.name, "1.0.0");
+        __ReentrancyGuard_init();
 
         transferOwnership(_admin);
-        maxSupply = _settings.maxSupply;
         settings = _settings;
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -55,7 +53,7 @@ contract WeedleNFTTokenV1 is
      */
     modifier isMintingOngoing() {
         require(
-            lastMintedId.current() + 1 <= maxSupply,
+            lastMintedId.current() + 1 <= settings.maxSupply,
             "Minting Error: Minting has ended!"
         );
         _;
@@ -100,6 +98,11 @@ contract WeedleNFTTokenV1 is
         override
     {
         require(
+            _totalMintedPerUser[msg.sender] <= settings.maxMintsAllowed,
+            "You have exceeded the allowed number of mints"
+        );
+
+        require(
             hash == keccak256(abi.encode(msg.sender, owner(), address(this))),
             "Invalid hash"
         );
@@ -115,7 +118,20 @@ contract WeedleNFTTokenV1 is
             msg.value == settings.price,
             "Insufficient amount sent for NFT"
         );
+
         _mintTo(msg.sender);
+
+        // PullPayment pattern can also be used here to store funds in an escrow
+        _safeTransfer(payable(owner()), msg.value);
+    }
+
+    function _safeTransfer(address payable payee, uint256 amount)
+        internal
+        nonReentrant
+    {
+        (bool sent, ) = payee.call{value: amount}("");
+        require(sent, "Failed to send Ether");
+        emit FundsTransfer(payee, amount);
     }
 
     /**
@@ -126,6 +142,8 @@ contract WeedleNFTTokenV1 is
         lastMintedId.increment();
 
         uint256 tokenId = lastMintedId.current();
+
+        require(_owners[tokenId] == address(0), "Token already minted");
 
         _owners[lastMintedId.current()] = to;
 

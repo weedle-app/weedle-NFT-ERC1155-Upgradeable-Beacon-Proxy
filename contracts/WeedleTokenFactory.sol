@@ -14,8 +14,8 @@ contract WeedleTokenFactory is Pausable, Ownable {
     uint256 public createdTokenCount;
     address private immutable weedleTokenBeacon;
 
-    // mapping of id to token created
-    mapping(uint256 => address) private tokensList;
+    // mapping of id to contract created
+    mapping(uint256 => address) private nftContract;
 
     event OnTokenDeployed(address tokenAddress, uint256 createdTokenCount);
 
@@ -23,12 +23,11 @@ contract WeedleTokenFactory is Pausable, Ownable {
         weedleTokenBeacon = address(_beacon);
     }
 
-    function createToken(SharedStructs.Settings memory _settings)
+    function createNFTContract(SharedStructs.Settings memory _settings)
         external
         whenNotPaused
         returns (address)
     {
-
         BeaconProxy proxy = new BeaconProxy(
             weedleTokenBeacon,
             abi.encodeWithSelector(
@@ -38,19 +37,19 @@ contract WeedleTokenFactory is Pausable, Ownable {
             )
         );
 
-        createdTokenCount++;
-        tokensList[createdTokenCount] = address(proxy);
+        ++createdTokenCount;
+        nftContract[createdTokenCount] = address(proxy);
         emit OnTokenDeployed(address(proxy), createdTokenCount);
         return address(proxy);
     }
 
-    function getTokenByIndex(uint32 index)
+    function getContractByIndex(uint32 index)
         external
         view
         whenNotPaused
         returns (address)
     {
-        return tokensList[index];
+        return nftContract[index];
     }
 
     function pauseFactory() external whenNotPaused onlyOwner {

@@ -8,5 +8,6 @@ library SharedStructs {
         string name;
         uint256 price;
         uint256 maxSupply;
+        uint256 maxMintsAllowed;
     }
 }

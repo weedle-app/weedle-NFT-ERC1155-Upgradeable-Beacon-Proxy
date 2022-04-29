@@ -24,12 +24,17 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 // Go to https://hardhat.org/config/ to learn more
 const { API_URL, PRIVATE_KEY, LOCAL_API_URL, LOCAL_PRIVATE_KEY } = process.env;
 const config: HardhatUserConfig = {
-  solidity: "0.8.6",
+  solidity: {
+    version: "0.8.6",
+    settings: {
+      optimizer: {
+        enabled: true,
+      },
+    },
+  },
   defaultNetwork: "hardhat",
   networks: {
-    /* hardhat: {
-      chainId: 31337,
-    }, */
+    hardhat: { loggingEnabled: false },
     ropsten: {
       url: API_URL || process.env.ROPSTEN_URL || "",
       accounts: PRIVATE_KEY !== undefined ? [`0x${PRIVATE_KEY}`] : [],

@@ -58,14 +58,15 @@ describe("WeedleNFTTokenV1", async () => {
     await weedleTokenFactory.deployed();
 
     await (
-      await weedleTokenFactory.createToken({
+      await weedleTokenFactory.createNFTContract({
         uri: nftBaseUri,
         maxSupply,
         name: "WDL",
         price: ethers.utils.parseEther("1"),
+        maxMintsAllowed: 2,
       })
     ).wait();
-    const tokenV1Addr = await weedleTokenFactory.getTokenByIndex(1);
+    const tokenV1Addr = await weedleTokenFactory.getContractByIndex(1);
     weedleNFTToken = await WeedleNFTTokenV1.attach(tokenV1Addr);
 
     snapshotId = await ethers.provider.send("evm_snapshot", []);
@@ -104,16 +105,18 @@ describe("WeedleNFTTokenV1", async () => {
       const newBaseUri = "https://new-token.com/{id}.json";
       const tokenId = 2;
 
-      // newBaseUri, 1
       await (
-        await weedleTokenFactory.createToken({
+        await weedleTokenFactory.createNFTContract({
           uri: newBaseUri,
           maxSupply: 1,
           name: "WDL",
           price: ethers.utils.parseEther("1"),
+          maxMintsAllowed: 3,
         })
       ).wait();
-      const newTokenV1Addr = await weedleTokenFactory.getTokenByIndex(tokenId);
+      const newTokenV1Addr = await weedleTokenFactory.getContractByIndex(
+        tokenId
+      );
       const newWeedleNFTToken = await WeedleNFTTokenV1.attach(newTokenV1Addr);
       await (await newWeedleNFTToken.mint()).wait();
 
@@ -172,6 +175,59 @@ describe("WeedleNFTTokenV1", async () => {
       )
         .to.emit(weedleNFTToken, "NFTMinted")
         .withArgs(1, _user.address, 1);
+    });
+  });
+
+  describe("Funds withdrawal", () => {
+    it("should transfer payments from minting to owner if escrow is not provided", async () => {
+      const _user = otherUsers[0];
+
+      await (
+        await weedleNFTToken.grantRole(
+          await weedleNFTToken.MINTER_ROLE(),
+          contractOwner.address
+        )
+      ).wait();
+
+      const { hash, signature } = await getMintingSignature(
+        contractOwner,
+        ["address", "address", "address"],
+        [_user.address, contractOwner.address, weedleNFTToken.address]
+      );
+
+      const balanceBefore = await weedleNFTToken.provider.getBalance(
+        contractOwner.address
+      );
+
+      expect(
+        Number.parseFloat(ethers.utils.formatEther(balanceBefore))
+      ).to.lessThan(
+        Number.parseFloat(
+          ethers.utils.formatEther(ethers.utils.parseEther("10000"))
+        )
+      );
+
+      const options = { value: ethers.utils.parseEther("1.0") };
+
+      await expect(
+        weedleNFTToken.connect(_user).reedemAndMint(hash, signature, options)
+      )
+        .to.emit(weedleNFTToken, "NFTMinted")
+        .withArgs(1, _user.address, 1)
+        .to.emit(weedleNFTToken, "FundsTransfer")
+        .withArgs(contractOwner.address, ethers.utils.parseEther("1.0"));
+
+      const balanceAfter = await weedleNFTToken.provider.getBalance(
+        contractOwner.address
+      );
+
+      expect(
+        Number.parseFloat(ethers.utils.formatEther(balanceAfter))
+      ).to.greaterThanOrEqual(
+        Number.parseFloat(
+          ethers.utils.formatEther(ethers.utils.parseEther("10000"))
+        )
+      );
     });
   });
 });
