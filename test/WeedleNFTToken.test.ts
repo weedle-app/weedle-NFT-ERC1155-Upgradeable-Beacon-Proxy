@@ -11,6 +11,21 @@ import {
   // eslint-disable-next-line node/no-missing-import
 } from "../typechain";
 
+const getMintingSignature = async (
+  contractOwner: SignerWithAddress,
+  typesToSign: string[],
+  dataToSign: string[]
+): Promise<{ hash: string; signature: string }> => {
+  const message = ethers.utils.defaultAbiCoder.encode(typesToSign, dataToSign);
+
+  const hash = ethers.utils.keccak256(message);
+  const signature = await contractOwner.signMessage(
+    ethers.utils.arrayify(hash)
+  );
+
+  return { hash, signature };
+};
+
 describe("WeedleNFTTokenV1", async () => {
   let weedleNFTToken: WeedleNFTTokenV1;
   let weedleTokenFactory: WeedleTokenFactory;
@@ -42,8 +57,16 @@ describe("WeedleNFTTokenV1", async () => {
     weedleTokenFactory = await WeedleTokenFactory.deploy(beacon.address);
     await weedleTokenFactory.deployed();
 
-    await (await weedleTokenFactory.createToken(nftBaseUri, maxSupply)).wait();
-    const tokenV1Addr = await weedleTokenFactory.getTokenByIndex(1);
+    await (
+      await weedleTokenFactory.createNFTContract({
+        uri: nftBaseUri,
+        maxSupply,
+        name: "WDL",
+        price: ethers.utils.parseEther("1"),
+        maxMintsAllowed: 2,
+      })
+    ).wait();
+    const tokenV1Addr = await weedleTokenFactory.getContractByIndex(1);
     weedleNFTToken = await WeedleNFTTokenV1.attach(tokenV1Addr);
 
     snapshotId = await ethers.provider.send("evm_snapshot", []);
@@ -82,15 +105,25 @@ describe("WeedleNFTTokenV1", async () => {
       const newBaseUri = "https://new-token.com/{id}.json";
       const tokenId = 2;
 
-      await (await weedleTokenFactory.createToken(newBaseUri, 1)).wait();
-      const newTokenV1Addr = await weedleTokenFactory.getTokenByIndex(tokenId);
+      await (
+        await weedleTokenFactory.createNFTContract({
+          uri: newBaseUri,
+          maxSupply: 1,
+          name: "WDL",
+          price: ethers.utils.parseEther("1"),
+          maxMintsAllowed: 3,
+        })
+      ).wait();
+      const newTokenV1Addr = await weedleTokenFactory.getContractByIndex(
+        tokenId
+      );
       const newWeedleNFTToken = await WeedleNFTTokenV1.attach(newTokenV1Addr);
       await (await newWeedleNFTToken.mint()).wait();
 
       await expect(newWeedleNFTToken.mint()).to.be.reverted;
     });
 
-    it("should not allow non-owner to mint", async () => {
+    it("should only allow owner mint NFTs using .mint function", async () => {
       const instance = weedleNFTToken.connect(otherUsers[0]);
       await expect(instance.mint()).to.be.reverted;
     });
@@ -116,6 +149,121 @@ describe("WeedleNFTTokenV1", async () => {
       expect(nftMintedEvent.args?.tokenId).to.equal(1);
       expect(nftMintedEvent.args?.mintedFor).to.equal(contractOwner.address);
       expect(nftMintedEvent.args?.amount).to.equal(1);
+    });
+
+    it("should verify signature and allow user mint", async () => {
+      const minter = otherUsers[1];
+      const _user = otherUsers[0];
+
+      await (
+        await weedleNFTToken.grantRole(
+          await weedleNFTToken.MINTER_ROLE(),
+          minter.address
+        )
+      ).wait();
+
+      const { hash, signature } = await getMintingSignature(
+        contractOwner,
+        ["address", "address", "address"],
+        [_user.address, contractOwner.address, weedleNFTToken.address]
+      );
+
+      const options = { value: ethers.utils.parseEther("1.0") };
+
+      await expect(
+        weedleNFTToken.connect(_user).reedemAndMint(hash, signature, options)
+      )
+        .to.emit(weedleNFTToken, "NFTMinted")
+        .withArgs(1, _user.address, 1);
+    });
+
+    it("should not allow non-admin user mint more than maximum allowed per user", async () => {
+      const minter = otherUsers[1];
+      const _user = otherUsers[0];
+
+      await (
+        await weedleNFTToken.grantRole(
+          await weedleNFTToken.MINTER_ROLE(),
+          minter.address
+        )
+      ).wait();
+
+      const { hash, signature } = await getMintingSignature(
+        contractOwner,
+        ["address", "address", "address"],
+        [_user.address, contractOwner.address, weedleNFTToken.address]
+      );
+
+      const options = { value: ethers.utils.parseEther("1.0") };
+
+      await (
+        await weedleNFTToken
+          .connect(_user)
+          .reedemAndMint(hash, signature, options)
+      ).wait();
+
+      await (
+        await weedleNFTToken
+          .connect(_user)
+          .reedemAndMint(hash, signature, options)
+      ).wait();
+
+      await expect(
+        weedleNFTToken.connect(_user).reedemAndMint(hash, signature, options)
+      ).to.be.revertedWith("You have exceeded the allowed number of mints");
+    });
+  });
+
+  describe("Funds withdrawal", () => {
+    it("should transfer payments for minting to owner", async () => {
+      const _user = otherUsers[0];
+
+      await (
+        await weedleNFTToken.grantRole(
+          await weedleNFTToken.MINTER_ROLE(),
+          contractOwner.address
+        )
+      ).wait();
+
+      const { hash, signature } = await getMintingSignature(
+        contractOwner,
+        ["address", "address", "address"],
+        [_user.address, contractOwner.address, weedleNFTToken.address]
+      );
+
+      const balanceBefore = await weedleNFTToken.provider.getBalance(
+        contractOwner.address
+      );
+
+      expect(
+        Number.parseFloat(ethers.utils.formatEther(balanceBefore))
+      ).to.lessThan(
+        Number.parseFloat(
+          ethers.utils.formatEther(ethers.utils.parseEther("10000"))
+        )
+      );
+
+      const options = { value: ethers.utils.parseEther("1.0") };
+
+      await expect(
+        weedleNFTToken.connect(_user).reedemAndMint(hash, signature, options)
+      )
+        .to.emit(weedleNFTToken, "NFTMinted")
+        .withArgs(1, _user.address, 1)
+        .to.emit(weedleNFTToken, "FundsTransfer")
+        .withArgs(contractOwner.address, ethers.utils.parseEther("1.0"));
+
+      const balanceAfter = await weedleNFTToken.provider.getBalance(
+        contractOwner.address
+      );
+
+      expect(
+        Number.parseFloat(ethers.utils.formatEther(balanceAfter))
+      ).to.greaterThanOrEqual(
+        Number.parseFloat(
+          ethers.utils.formatEther(ethers.utils.parseEther("10000"))
+        )
+      );
     });
   });
 });

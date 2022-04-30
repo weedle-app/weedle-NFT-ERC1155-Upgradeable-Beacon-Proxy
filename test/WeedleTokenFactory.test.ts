@@ -43,8 +43,16 @@ describe("WeedleTokenFactory", async () => {
     weedleTokenFactory = await WeedleTokenFactory.deploy(beacon.address);
     await weedleTokenFactory.deployed();
 
-    await (await weedleTokenFactory.createToken(nftBaseUri, maxSupply)).wait();
-    const tokenV1Addr = await weedleTokenFactory.getTokenByIndex(1);
+    await (
+      await weedleTokenFactory.createNFTContract({
+        uri: nftBaseUri,
+        maxSupply,
+        name: "WDL",
+        price: ethers.utils.parseEther("1"),
+        maxMintsAllowed: 1,
+      })
+    ).wait();
+    const tokenV1Addr = await weedleTokenFactory.getContractByIndex(1);
     weedleNFTToken = await WeedleNFTTokenV1.attach(tokenV1Addr);
 
     snapshotId = await ethers.provider.send("evm_snapshot", []);
@@ -65,9 +73,17 @@ describe("WeedleTokenFactory", async () => {
       const tokenId = 2;
 
       await (
-        await weedleTokenFactory.createToken(newBaseUri, maxSupply)
+        await weedleTokenFactory.createNFTContract({
+          uri: newBaseUri,
+          maxSupply,
+          name: "WDL1",
+          price: ethers.utils.parseEther("1"),
+          maxMintsAllowed: 1,
+        })
       ).wait();
-      const newTokenV1Addr = await weedleTokenFactory.getTokenByIndex(tokenId);
+      const newTokenV1Addr = await weedleTokenFactory.getContractByIndex(
+        tokenId
+      );
       const newWeedleNFTToken = await WeedleNFTTokenV1.attach(newTokenV1Addr);
       const rawUri = await newWeedleNFTToken.uri(tokenId);
 
@@ -80,14 +96,21 @@ describe("WeedleTokenFactory", async () => {
       await (await weedleTokenFactory.pauseFactory()).wait();
       const newBaseUri = "https://new-token.com/{id}.json";
 
-      await expect(weedleTokenFactory.createToken(newBaseUri, maxSupply)).to.be
-        .reverted;
+      await expect(
+        weedleTokenFactory.createNFTContract({
+          uri: newBaseUri,
+          maxSupply,
+          name: "WDL2",
+          price: ethers.utils.parseEther("1"),
+          maxMintsAllowed: 1,
+        })
+      ).to.be.reverted;
     });
 
     it("should not allow getting existing NFT token information when factory is paused", async () => {
       await (await weedleTokenFactory.pauseFactory()).wait();
 
-      await expect(weedleTokenFactory.getTokenByIndex(1)).to.be.reverted;
+      await expect(weedleTokenFactory.getContractByIndex(1)).to.be.reverted;
     });
 
     it("should not allow pausing factory when factory already paused", async () => {
