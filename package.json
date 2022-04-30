@@ -47,6 +47,8 @@
   "scripts": {
     "clean": "rm -rf ./src/artifacts",
     "test": "cross-env TS_NODE_TRANSPILE_ONLY=1 hardhat test",
-    "test:gas": "cross-env REPORT_GAS=true yarn test"
+    "test:gas": "cross-env REPORT_GAS=true yarn test",
+    "sol-lint": "npx solhint 'contracts/**/*.sol' --fix",
+    "sol-prettier": "npx prettier '**/*.{json,sol,md}' --write"
   }
 }
