@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "hardhat/console.sol";
 
 import "./interfaces/IWeedleNFTToken.sol";
 import "./helpers/SharedStructs.sol";
@@ -98,7 +99,7 @@ contract WeedleNFTTokenV1 is
         override
     {
         require(
-            _totalMintedPerUser[msg.sender] <= settings.maxMintsAllowed,
+            _totalMintedPerUser[msg.sender] < settings.maxMintsAllowed,
             "You have exceeded the allowed number of mints"
         );
 
@@ -144,6 +145,8 @@ contract WeedleNFTTokenV1 is
         uint256 tokenId = lastMintedId.current();
 
         require(_owners[tokenId] == address(0), "Token already minted");
+
+        ++_totalMintedPerUser[msg.sender];
 
         _owners[lastMintedId.current()] = to;
 

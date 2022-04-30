@@ -123,7 +123,7 @@ describe("WeedleNFTTokenV1", async () => {
       await expect(newWeedleNFTToken.mint()).to.be.reverted;
     });
 
-    it("should not allow non-owner to mint", async () => {
+    it("should only allow owner mint NFTs using .mint function", async () => {
       const instance = weedleNFTToken.connect(otherUsers[0]);
       await expect(instance.mint()).to.be.reverted;
     });
@@ -175,6 +175,42 @@ describe("WeedleNFTTokenV1", async () => {
       )
         .to.emit(weedleNFTToken, "NFTMinted")
         .withArgs(1, _user.address, 1);
+    });
+
+    it("should not allow non-admin user mint more than maximum allowed per user", async () => {
+      const minter = otherUsers[1];
+      const _user = otherUsers[0];
+
+      await (
+        await weedleNFTToken.grantRole(
+          await weedleNFTToken.MINTER_ROLE(),
+          minter.address
+        )
+      ).wait();
+
+      const { hash, signature } = await getMintingSignature(
+        contractOwner,
+        ["address", "address", "address"],
+        [_user.address, contractOwner.address, weedleNFTToken.address]
+      );
+
+      const options = { value: ethers.utils.parseEther("1.0") };
+
+      await (
+        await weedleNFTToken
+          .connect(_user)
+          .reedemAndMint(hash, signature, options)
+      ).wait();
+
+      await (
+        await weedleNFTToken
+          .connect(_user)
+          .reedemAndMint(hash, signature, options)
+      ).wait();
+
+      await expect(
+        weedleNFTToken.connect(_user).reedemAndMint(hash, signature, options)
+      ).to.be.revertedWith("You have exceeded the allowed number of mints");
     });
   });
 
