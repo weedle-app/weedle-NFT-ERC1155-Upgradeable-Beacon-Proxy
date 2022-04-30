@@ -215,7 +215,7 @@ describe("WeedleNFTTokenV1", async () => {
   });
 
   describe("Funds withdrawal", () => {
-    it("should transfer payments from minting to owner if escrow is not provided", async () => {
+    it("should transfer payments for minting to owner", async () => {
       const _user = otherUsers[0];
 
       await (
