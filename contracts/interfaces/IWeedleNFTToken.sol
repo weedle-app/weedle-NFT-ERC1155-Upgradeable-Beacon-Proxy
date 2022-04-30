@@ -14,12 +14,6 @@ interface IWeedleNFTToken is IERC1155Upgradeable {
 
     function mint() external returns (uint256);
 
-    function safeTransferToOtherChains(
-        uint256 tokenId,
-        uint16 chainId,
-        bytes calldata _destination
-    ) external returns (uint256);
-
     function ownerOf(uint256 tokenId) external view returns (address);
 
     function reedemAndMint(bytes32 hash, bytes calldata signature)

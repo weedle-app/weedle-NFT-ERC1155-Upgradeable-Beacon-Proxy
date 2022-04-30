@@ -156,10 +156,4 @@ contract WeedleNFTTokenV1 is
 
         return tokenId;
     }
-
-    function safeTransferToOtherChains(
-        uint256 tokenId,
-        uint16 chainId,
-        bytes calldata _destination
-    ) public override returns (uint256) {}
 }
