@@ -80,6 +80,11 @@ contract WeedleNFTTokenV1 is
         return _mintTo(msg.sender);
     }
 
+    function updatePrice(uint256 _newPrice) external override onlyOwner {
+        settings.price = _newPrice;
+        emit PriceUpdate(_newPrice);
+    }
+
     /**
      * @dev See {ownerOf}.
      *
