@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableMapUpgradeable.sol";
 
 import "./interfaces/IWeedleNFTToken.sol";
 import "./helpers/SharedStructs.sol";
@@ -23,12 +24,13 @@ contract WeedleNFTTokenV1 is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     // Mapping from token ID to owner address
-    mapping(uint256 => address) private _owners;
     mapping(address => uint256) private _totalMintedPerUser;
 
+    using EnumerableMapUpgradeable for EnumerableMapUpgradeable.UintToAddressMap;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     CountersUpgradeable.Counter private lastMintedId;
+    EnumerableMapUpgradeable.UintToAddressMap private _owners;
 
     SharedStructs.Settings private settings;
 
@@ -91,7 +93,7 @@ contract WeedleNFTTokenV1 is
      * tokenId - Id of token to get owner of
      */
     function ownerOf(uint256 tokenId) public view override returns (address) {
-        address owner = _owners[tokenId];
+        address owner = _owners.get(tokenId);
 
         require(owner != address(0), "Query for nonexistent token!");
         return owner;
@@ -102,6 +104,8 @@ contract WeedleNFTTokenV1 is
         payable
         override
     {
+        require(_owners.length() <= settings.maxSupply, "Minting has ended!");
+
         require(
             _totalMintedPerUser[msg.sender] < settings.maxMintsAllowed,
             "You have exceeded the allowed number of mints"
@@ -148,11 +152,11 @@ contract WeedleNFTTokenV1 is
 
         uint256 tokenId = lastMintedId.current();
 
-        require(_owners[tokenId] == address(0), "Token already minted");
+        require(!_owners.contains(tokenId), "Token already minted");
 
         ++_totalMintedPerUser[msg.sender];
 
-        _owners[lastMintedId.current()] = to;
+        _owners.set(lastMintedId.current(), to);
 
         _mint(to, tokenId, 1, "");
 
