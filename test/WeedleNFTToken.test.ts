@@ -76,7 +76,7 @@ describe("WeedleNFTTokenV1", async () => {
     await ethers.provider.send("evm_revert", [snapshotId]);
   });
 
-  describe("Uri", () => {
+  describe("Admin Functions", () => {
     it("should get correct uri and format it correctly", async () => {
       const tokenId = 2;
       const rawUri = await weedleNFTToken.uri(tokenId);
@@ -89,6 +89,57 @@ describe("WeedleNFTTokenV1", async () => {
         .toString(16)
         .padStart(64, "0")}.json`;
       expect(expectedUri).to.equal(formatedUri);
+    });
+    it("should revert transaction if any other user but owner tries to update price", async () => {
+      const instance = weedleNFTToken.connect(otherUsers[2]);
+
+      await expect(
+        instance.updatePrice(ethers.utils.parseEther("2.0"))
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+    it("should allow owner successfully change price", async () => {
+      await expect(weedleNFTToken.updatePrice(ethers.utils.parseEther("2.0")))
+        .to.emit(weedleNFTToken, "PriceUpdate")
+        .withArgs(ethers.utils.parseEther("2.0"));
+    });
+    it("should disallow minting at old price", async () => {
+      const _user = otherUsers[1];
+      await (
+        await weedleNFTToken.updatePrice(ethers.utils.parseEther("2.0"))
+      ).wait();
+
+      const { hash, signature } = await getMintingSignature(
+        contractOwner,
+        ["address", "address", "address"],
+        [_user.address, contractOwner.address, weedleNFTToken.address]
+      );
+
+      const options = { value: ethers.utils.parseEther("1.0") };
+
+      await expect(
+        weedleNFTToken.connect(_user).reedemAndMint(hash, signature, options)
+      ).to.revertedWith("Insufficient amount sent for NFT");
+    });
+
+    it("should only allow minting at new price", async () => {
+      const user = otherUsers[1];
+      await (
+        await weedleNFTToken.updatePrice(ethers.utils.parseEther("2.0"))
+      ).wait();
+
+      const { hash, signature } = await getMintingSignature(
+        contractOwner,
+        ["address", "address", "address"],
+        [user.address, contractOwner.address, weedleNFTToken.address]
+      );
+
+      const options = { value: ethers.utils.parseEther("2.0") };
+
+      await expect(
+        weedleNFTToken.connect(user).reedemAndMint(hash, signature, options)
+      )
+        .to.emit(weedleNFTToken, "NFTMinted")
+        .withArgs(1, user.address, 1);
     });
   });
 
@@ -152,13 +203,12 @@ describe("WeedleNFTTokenV1", async () => {
     });
 
     it("should verify signature and allow user mint", async () => {
-      const minter = otherUsers[1];
       const _user = otherUsers[0];
 
       await (
         await weedleNFTToken.grantRole(
           await weedleNFTToken.MINTER_ROLE(),
-          minter.address
+          contractOwner.address
         )
       ).wait();
 

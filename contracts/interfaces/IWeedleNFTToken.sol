@@ -10,7 +10,8 @@ interface IWeedleNFTToken is IERC1155Upgradeable {
         uint256 amount
     );
 
-    event FundsTransfer(address indexed payee, uint256 indexed amount);
+    event FundsTransfer(address indexed payee, uint256 amount);
+    event PriceUpdate(uint256 newPrice);
 
     function mint() external returns (uint256);
 
@@ -19,4 +20,6 @@ interface IWeedleNFTToken is IERC1155Upgradeable {
     function reedemAndMint(bytes32 hash, bytes calldata signature)
         external
         payable;
+
+    function updatePrice(uint256 newPrice) external;
 }
