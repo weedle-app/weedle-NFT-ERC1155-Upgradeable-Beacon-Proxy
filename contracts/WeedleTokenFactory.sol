@@ -15,7 +15,7 @@ contract WeedleTokenFactory is Pausable, Ownable {
     address private immutable weedleTokenBeacon;
 
     // mapping of id to contract created
-    mapping(uint256 => address) private nftContract;
+    mapping(uint256 => address) private nftContracts;
 
     event OnTokenDeployed(address tokenAddress, uint256 createdTokenCount);
 
@@ -38,7 +38,7 @@ contract WeedleTokenFactory is Pausable, Ownable {
         );
 
         ++createdTokenCount;
-        nftContract[createdTokenCount] = address(proxy);
+        nftContracts[createdTokenCount] = address(proxy);
         emit OnTokenDeployed(address(proxy), createdTokenCount);
         return address(proxy);
     }
@@ -49,7 +49,7 @@ contract WeedleTokenFactory is Pausable, Ownable {
         whenNotPaused
         returns (address)
     {
-        return nftContract[index];
+        return nftContracts[index];
     }
 
     function pauseFactory() external whenNotPaused onlyOwner {
