@@ -11,7 +11,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableMapUpgradeable.sol";
 
 import "./interfaces/IWeedleNFTToken.sol";
-import "./helpers/SharedStructs.sol";
+import "./common/SharedStructs.sol";
 
 contract WeedleNFTTokenV1 is
     IWeedleNFTToken,

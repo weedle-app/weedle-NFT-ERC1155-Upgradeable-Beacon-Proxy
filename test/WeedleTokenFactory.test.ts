@@ -2,13 +2,11 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
-// eslint-disable-next-line node/no-missing-import
 import {
   WeedleNFTTokenV1,
   WeedleTokenFactory,
   // eslint-disable-next-line camelcase
   WeedleNFTTokenV1__factory,
-  // eslint-disable-next-line node/no-missing-import
 } from "../typechain";
 
 describe("WeedleTokenFactory", async () => {

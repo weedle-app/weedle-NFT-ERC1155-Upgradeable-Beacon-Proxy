@@ -1,18 +1,17 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { Wallet } from "ethers";
 import { ethers, upgrades } from "hardhat";
 
-// eslint-disable-next-line node/no-missing-import
 import {
   WeedleNFTTokenV1,
   WeedleTokenFactory,
   // eslint-disable-next-line camelcase
   WeedleNFTTokenV1__factory,
-  // eslint-disable-next-line node/no-missing-import
 } from "../typechain";
 
 const getMintingSignature = async (
-  contractOwner: SignerWithAddress,
+  contractOwner: SignerWithAddress | Wallet,
   typesToSign: string[],
   dataToSign: string[]
 ): Promise<{ hash: string; signature: string }> => {

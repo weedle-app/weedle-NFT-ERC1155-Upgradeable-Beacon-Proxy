@@ -8,3 +8,8 @@ typechain
 cache
 artifacts
 .openzeppelin/unknown-*.json
+play.no-commit.*
+.DS_Store
+.vscode
+config/test.json
+config/localhost.json

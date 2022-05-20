@@ -1,29 +1,14 @@
-import * as dotenv from "dotenv";
+import config from "config";
 import { ethers } from "ethers";
 
 import { ethers as hardHatEthers, upgrades } from "hardhat";
-// import { TransactionResponse } from "@ethersproject/abstract-provider";
 import "@nomiclabs/hardhat-waffle";
+import { getCurrentProvider } from "./migration-helper";
 
-dotenv.config();
-type ProviderType = "local" | "staging";
-
-export function getProvider(
-  provider?: ProviderType
-): ethers.providers.Provider {
-  if (provider === "staging") {
-    return ethers.getDefaultProvider("ropsten", {
-      alchemy: process.env.ALCHEMY_API_KEY,
-    });
-  }
-  return new ethers.providers.JsonRpcProvider();
-}
-
-export const getWallet = (envName: ProviderType = "local"): ethers.Wallet => {
-  const envKey = envName.toUpperCase();
-  const privateKey = process.env[`${envKey}_PRIVATE_KEY`];
+export const getWallet = (): ethers.Wallet => {
+  const privateKey = config.get("PRIVATE_KEY") as string;
   if (!privateKey) throw new Error("Invalid private key");
-  return new ethers.Wallet(privateKey, getProvider(envName));
+  return new ethers.Wallet(privateKey, getCurrentProvider());
 };
 
 (async () => {
@@ -37,22 +22,38 @@ export const getWallet = (envName: ProviderType = "local"): ethers.Wallet => {
   // We get the contract to deploy
 
   try {
-    const WeedleNFTTokenV1 = await hardHatEthers.getContractFactory(
+    const nftBaseUri = config.get("NFT_BASE_URI") as string;
+    const maxSupply = Number.parseInt(config.get("NFT_MAX_SUPPLY") as string);
+
+    const weedleTokenV1 = await hardHatEthers.getContractFactory(
       "WeedleNFTTokenV1",
       getWallet()
     );
 
-    const weedleNFTTokenV1 = await upgrades.deployProxy(
-      WeedleNFTTokenV1,
-      [process.env.NFT_BASE_URI],
-      {
-        kind: "uups",
-      }
+    const beacon = await upgrades.deployBeacon(weedleTokenV1);
+    await beacon.deployed();
+    console.log("beacon deployed", beacon.address);
+
+    const WeedleTokenFactory = await hardHatEthers.getContractFactory(
+      "WeedleTokenFactory",
+      getWallet()
     );
 
-    await weedleNFTTokenV1.deployed();
+    const weedleTokenFactory = await WeedleTokenFactory.deploy(beacon.address);
+    await weedleTokenFactory.deployed();
+    console.log("factory deployed", weedleTokenFactory.address);
 
-    console.log("Weedle NFT deployed to:", weedleNFTTokenV1.address);
+    await (
+      await weedleTokenFactory.createNFTContract({
+        uri: nftBaseUri,
+        maxSupply,
+        name: "WDL",
+        price: ethers.utils.parseEther("1"),
+        maxMintsAllowed: 2,
+      })
+    ).wait();
+    const tokenV1Addr = await weedleTokenFactory.getContractByIndex(1);
+    console.log("new nft contract created", tokenV1Addr);
   } catch (error) {
     console.error(error);
     process.exitCode = 1;

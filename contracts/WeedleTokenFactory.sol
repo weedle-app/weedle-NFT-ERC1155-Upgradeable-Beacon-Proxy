@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./WeedleNFTTokenV1.sol";
-import "./helpers/SharedStructs.sol";
+import "./common/SharedStructs.sol";
 
 contract WeedleTokenFactory is Pausable, Ownable {
     uint256 public createdTokenCount;
