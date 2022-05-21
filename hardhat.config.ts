@@ -23,14 +23,15 @@ const hardHatConfig: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: { loggingEnabled: false },
-    ropsten: {
+    // Create config and uncomment to use
+    /* ropsten: {
       url: config.get("RPC_URL"),
       accounts: [config.get("PRIVATE_KEY") as string],
     },
     local: {
       url: config.get("RPC_URL"),
       accounts: [config.get("PRIVATE_KEY") as string],
-    },
+    }, */
   },
   gasReporter: {
     enabled: config.has("REPORT_GAS") && config.get("REPORT_GAS") == true,
